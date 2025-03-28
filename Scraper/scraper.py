@@ -1,10 +1,21 @@
-import requests
-from bs4 import BeautifulSoup
+"""
+TwinCAT Error Code Scraper
+
+This script scrapes error codes from Beckhoff TwinCAT documentation.
+It extracts error codes, descriptions, and identifiers from HTML tables
+and saves them to a CSV file for easy reference.
+"""
+
+# Standard library imports
 import csv
+import logging
 import os
 import re
-import logging
-from typing import Tuple, List, Dict, Optional, Any
+from typing import Tuple, List, Dict, Optional, Any, Set
+
+# Third-party imports
+import requests
+from bs4 import BeautifulSoup
 
 # Configure logging
 logging.basicConfig(
@@ -18,21 +29,44 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Constants
-MAIN_URL = "https://infosys.beckhoff.com/content/1033/tc3ncerrcode/1521556875.html"
-BASE_URL = "https://infosys.beckhoff.com/content/1033/tc3ncerrcode/"
-OUTPUT_FILE = "c:\\Users\\Saeed\\Documents\\TcXaeShell\\Samples\\TcError\\tc3ncerrcode.csv"
+MAIN_URL: str = "https://infosys.beckhoff.com/content/1033/tc3ncerrcode/1521556875.html"
+BASE_URL: str = "https://infosys.beckhoff.com/content/1033/tc3ncerrcode/"
+OUTPUT_FILE: str = "tc3ncerrcode.csv"
 
 class ErrorCodeScraper:
-    """Class to scrape TwinCAT error codes from Beckhoff documentation."""
+    """
+    Scraper for TwinCAT error codes from Beckhoff documentation.
+    
+    This class handles fetching HTML content, parsing tables containing error codes,
+    extracting relevant information, and saving the results to a CSV file.
+    """
     
     def __init__(self, main_url: str, base_url: str, output_file: str):
-        """Initialize the scraper with main URL, base URL, and output file path."""
+        """
+        Initialize the scraper with configuration parameters.
+        
+        Args:
+            main_url: URL of the main page containing error code tables or links
+            base_url: Base URL used to construct absolute URLs from relative links
+            output_file: Path to the CSV file where results will be saved
+        """
         self.main_url = main_url
         self.base_url = base_url
         self.output_file = output_file
         
     def fetch_html(self, url: str) -> bytes:
-        """Fetch HTML content from the specified URL."""
+        """
+        Fetch HTML content from the specified URL with error handling.
+        
+        Args:
+            url: The URL to fetch content from
+            
+        Returns:
+            Raw HTML content as bytes
+            
+        Raises:
+            requests.RequestException: If the request fails
+        """
         try:
             response = requests.get(url, timeout=30)
             response.raise_for_status()
@@ -72,11 +106,11 @@ class ErrorCodeScraper:
             logger.info(f"Processing table #{table_idx+1} with headers: {headers}")
             
             # Check if table has specific columns we need
-            has_error_code = any(h.lower() in ['error(dec)', 'error code', 'error'] for h in headers)
+            has_error_code = any(h.lower() in ['error(dec)', 'error code', 'error', 'code (dec)'] for h in headers)
             has_description = any(h.lower() in ['description', 'text'] for h in headers)
             
             # Find header indexes
-            error_code_idx = next((i for i, h in enumerate(headers) if h.lower() in ['error(dec)', 'error code', 'error']), 0)
+            error_code_idx = next((i for i, h in enumerate(headers) if h.lower() in ['error(dec)', 'error code', 'error', 'code (dec)']), 0)
             description_idx = next((i for i, h in enumerate(headers) if h.lower() in ['description', 'text']), 1)
             
             # Check for Symbol column
